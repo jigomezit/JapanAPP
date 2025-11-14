@@ -8,8 +8,6 @@ const nextConfig = {
       },
     ],
   },
-  // Configuración para producción en Render
-  output: 'standalone',
 }
 
 module.exports = nextConfig
