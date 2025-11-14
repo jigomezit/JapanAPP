@@ -89,10 +89,10 @@ export default function PracticePage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-4"
+          className="grid grid-cols-2 gap-4"
         >
-          <Card className="border-2 p-4">
-            <div className="flex items-center justify-between">
+          <Card className="border-2 p-4 h-full flex flex-col">
+            <div className="flex items-center justify-between flex-1">
               <div>
                 <p className="text-sm text-muted-foreground">Progreso</p>
                 <p className="text-2xl font-bold">
@@ -103,8 +103,8 @@ export default function PracticePage() {
             </div>
           </Card>
 
-          <Card className="border-2 p-4">
-            <div className="flex items-center justify-between">
+          <Card className="border-2 p-4 h-full flex flex-col">
+            <div className="flex items-center justify-between flex-1">
               <div>
                 <p className="text-sm text-muted-foreground">Puntos</p>
                 <p className="text-2xl font-bold">{formatPoints(score)}</p>
@@ -113,8 +113,8 @@ export default function PracticePage() {
             </div>
           </Card>
 
-          <Card className="border-2 p-4">
-            <div className="flex items-center justify-between">
+          <Card className="border-2 p-4 h-full flex flex-col">
+            <div className="flex items-center justify-between flex-1">
               <div>
                 <p className="text-sm text-muted-foreground">Precisión</p>
                 <p className="text-2xl font-bold">{accuracy}%</p>
@@ -123,8 +123,8 @@ export default function PracticePage() {
             </div>
           </Card>
 
-          <Card className="border-2 p-4">
-            <div className="flex items-center justify-between">
+          <Card className="border-2 p-4 h-full flex flex-col">
+            <div className="flex items-center justify-between flex-1">
               <div>
                 <p className="text-sm text-muted-foreground">Tiempo</p>
                 <p className="text-2xl font-bold">{formatTime(totalTime)}</p>

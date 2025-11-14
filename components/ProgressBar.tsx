@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -28,13 +27,10 @@ export function ProgressBar({
           <span>{Math.round(percentage)}%</span>
         </div>
       )}
-      <motion.div
-        initial={{ width: 0 }}
-        animate={{ width: `${percentage}%` }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-      >
-        <Progress value={percentage} className="h-3" />
-      </motion.div>
+      <Progress 
+        value={percentage} 
+        className="h-3 w-full" 
+      />
     </div>
   );
 }

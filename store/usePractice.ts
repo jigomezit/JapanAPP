@@ -26,7 +26,7 @@ interface PracticeState {
   error: string | null;
   loadExercises: (types: ExerciseType[], limit?: number) => Promise<void>;
   validateAnswer: (answer: string) => boolean;
-  nextQuestion: () => void;
+  nextQuestion: () => Promise<void>;
   finishPractice: () => Promise<void>;
   reset: () => void;
   startTimer: () => void;
@@ -117,13 +117,14 @@ export const usePractice = create<PracticeState>((set, get) => ({
     return correct;
   },
 
-  nextQuestion: () => {
+  nextQuestion: async () => {
     const { currentIndex, exercises } = get();
     const nextIndex = currentIndex + 1;
 
     if (nextIndex >= exercises.length) {
+      // Wait for finishPractice to complete before setting isFinished
+      await get().finishPractice();
       set({ isFinished: true });
-      get().finishPractice();
       return;
     }
 
@@ -138,12 +139,21 @@ export const usePractice = create<PracticeState>((set, get) => ({
     const { results, score, correctCount, totalTime } = get();
     const { user } = useSession.getState();
 
-    if (!user) return;
+    if (!user) {
+      console.error("No user found when finishing practice");
+      return;
+    }
+
+    if (results.length === 0) {
+      console.warn("No results to save");
+      return;
+    }
 
     try {
       // Save all partidas
+      const saveErrors: string[] = [];
       for (const result of results) {
-        await savePartida({
+        const { error } = await savePartida({
           usuario_id: user.id,
           ejercicio_id: result.exerciseId,
           correcto: result.correct,
@@ -151,6 +161,17 @@ export const usePractice = create<PracticeState>((set, get) => ({
           puntos: result.points,
           tipo: result.tipo,
         });
+        
+        if (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          saveErrors.push(`Error saving partida for exercise ${result.exerciseId}: ${errorMessage}`);
+          console.error(`Error saving partida:`, error);
+        }
+      }
+
+      if (saveErrors.length > 0) {
+        console.error("Errors saving partidas:", saveErrors);
+        set({ error: `Error guardando algunas partidas: ${saveErrors.join(", ")}` });
       }
 
       // Update user stats
@@ -161,12 +182,22 @@ export const usePractice = create<PracticeState>((set, get) => ({
           ? user.streak + 1
           : 0;
 
-      await updateUserStats(user.id, newExp, newStreak);
+      const { error: updateError } = await updateUserStats(user.id, newExp, newStreak);
+      
+      if (updateError) {
+        const errorMessage = updateError instanceof Error ? updateError.message : String(updateError);
+        console.error("Error updating user stats:", updateError);
+        set({ error: `Error actualizando estadísticas: ${errorMessage}` });
+      } else {
+        console.log(`Successfully updated user stats: exp=${newExp}, streak=${newStreak}`);
+      }
 
       // Refresh user in session store
       await useSession.getState().refreshUser();
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error("Error finishing practice:", error);
+      set({ error: `Error finalizando práctica: ${errorMessage}` });
     }
   },
 

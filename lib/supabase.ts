@@ -1,12 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    "Supabase URL or Anon Key missing. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables."
+  throw new Error(
+    "❌ Variables de entorno de Supabase faltantes.\n\n" +
+    "Por favor, crea un archivo .env.local en la raíz del proyecto con:\n\n" +
+    "NEXT_PUBLIC_SUPABASE_URL=tu_url_de_supabase\n" +
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anonima_de_supabase\n\n" +
+    "Puedes encontrar estas credenciales en tu proyecto de Supabase:\n" +
+    "Dashboard > Settings > API"
   );
 }
 
@@ -51,12 +56,24 @@ export async function savePartida(partida: {
   puntos: number;
   tipo: string;
 }): Promise<{ error: Error | null }> {
-  const { error } = await supabase.from("partidas").insert({
-    ...partida,
-    fecha: new Date().toISOString(),
-  });
+  const { error } = await supabase
+    .from("partidas")
+    .insert({
+      usuario_id: partida.usuario_id,
+      ejercicio_id: partida.ejercicio_id,
+      correcto: partida.correcto,
+      tiempo_respuesta: partida.tiempo_respuesta,
+      puntos: partida.puntos,
+      tipo: partida.tipo,
+      fecha: new Date().toISOString(),
+    } as any);
 
-  return { error };
+  if (error) {
+    console.error("Error saving partida:", error);
+    return { error: new Error(error.message || "Error guardando partida") };
+  }
+
+  return { error: null };
 }
 
 export async function getWeeklyRanking(): Promise<{
@@ -70,7 +87,7 @@ export async function getWeeklyRanking(): Promise<{
   const { data: partidas, error: partidasError } = await supabase
     .from("partidas")
     .select("usuario_id, puntos, correcto")
-    .gte("fecha", startOfWeek.toISOString());
+    .gte("fecha", startOfWeek.toISOString()) as any;
 
   if (partidasError) {
     return { data: [], error: partidasError };
@@ -88,7 +105,7 @@ export async function getWeeklyRanking(): Promise<{
     total_intentos: number;
   }>();
 
-  partidas.forEach((entry) => {
+  (partidas as any[]).forEach((entry: any) => {
     const userId = entry.usuario_id;
     if (!rankingMap.has(userId)) {
       rankingMap.set(userId, {
@@ -111,7 +128,7 @@ export async function getWeeklyRanking(): Promise<{
   const { data: usuarios, error: usuariosError } = await supabase
     .from("usuarios")
     .select("id, nombre, avatar_url")
-    .in("id", userIds);
+    .in("id", userIds) as any;
 
   if (usuariosError) {
     return { data: [], error: usuariosError };
@@ -120,7 +137,7 @@ export async function getWeeklyRanking(): Promise<{
   // Combine ranking data with user details
   const ranking = Array.from(rankingMap.values())
     .map((entry) => {
-      const usuario = usuarios?.find((u) => u.id === entry.usuario_id);
+      const usuario = (usuarios as any[])?.find((u: any) => u.id === entry.usuario_id);
       return {
         ...entry,
         nombre: usuario?.nombre || "Usuario",
@@ -140,10 +157,16 @@ export async function updateUserStats(
 ): Promise<{ error: Error | null }> {
   const { error } = await supabase
     .from("usuarios")
+    // @ts-ignore - Supabase types are not properly inferred
     .update({ exp, streak })
     .eq("id", userId);
 
-  return { error };
+  if (error) {
+    console.error("Error updating user stats:", error);
+    return { error: new Error(error.message || "Error actualizando estadísticas del usuario") };
+  }
+
+  return { error: null };
 }
 
 export async function getUserStats(
@@ -156,5 +179,69 @@ export async function getUserStats(
     .single();
 
   return { data, error };
+}
+
+export async function uploadAvatar(
+  userId: string,
+  file: File
+): Promise<{ data: string | null; error: Error | null }> {
+  try {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    // Subir archivo a Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      return { data: null, error: new Error(uploadError.message) };
+    }
+
+    // Obtener URL pública del archivo
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+    // Actualizar avatar_url en la base de datos
+    const { error: updateError } = await supabase
+      .from("usuarios")
+      // @ts-ignore - Supabase types are not properly inferred
+      .update({ avatar_url: publicUrl })
+      .eq("id", userId);
+
+    if (updateError) {
+      return { data: null, error: new Error(updateError.message) };
+    }
+
+    return { data: publicUrl, error: null };
+  } catch (error) {
+    return { data: null, error: error as Error };
+  }
+}
+
+export async function updateUserProfile(
+  userId: string,
+  updates: { nombre?: string; avatar_url?: string }
+): Promise<{ error: Error | null }> {
+  try {
+    const { error } = await supabase
+      .from("usuarios")
+      // @ts-ignore - Supabase types are not properly inferred
+      .update(updates)
+      .eq("id", userId);
+
+    if (error) {
+      return { error: new Error(error.message) };
+    }
+
+    return { error: null };
+  } catch (error) {
+    return { error: error as Error };
+  }
 }
 

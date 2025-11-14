@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +12,12 @@ import { getWeeklyRanking } from "@/lib/supabase";
 import type { RankingEntry } from "@/lib/types";
 import { Flame, Trophy, Star, Play } from "lucide-react";
 import Link from "next/link";
+import { ProfileButton } from "@/components/ProfileButton";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading, initialized, initialize, logout } = useSession();
+  const pathname = usePathname();
+  const { user, loading, initialized, initialize, refreshUser } = useSession();
   const [ranking, setRanking] = React.useState<RankingEntry[]>([]);
   const [rankingLoading, setRankingLoading] = React.useState(true);
 
@@ -31,18 +33,40 @@ export default function DashboardPage() {
     }
   }, [initialized, user, router]);
 
-  React.useEffect(() => {
-    const loadRanking = async () => {
+  // Función para recargar datos
+  const loadData = React.useCallback(async () => {
+    const currentUser = useSession.getState().user;
+    if (currentUser) {
+      // Refrescar datos del usuario
+      await refreshUser();
+      // Recargar ranking
       setRankingLoading(true);
       const { data } = await getWeeklyRanking();
       setRanking(data || []);
       setRankingLoading(false);
+    }
+  }, [refreshUser]);
+
+  // Recargar datos cuando se vuelve al dashboard
+  React.useEffect(() => {
+    if (initialized && pathname === "/dashboard") {
+      loadData();
+    }
+  }, [pathname, initialized, loadData]);
+
+  // Recargar datos cuando la ventana vuelve a estar visible
+  React.useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && pathname === "/dashboard" && initialized) {
+        loadData();
+      }
     };
 
-    if (user) {
-      loadRanking();
-    }
-  }, [user]);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [pathname, initialized, loadData]);
 
   if (loading || !initialized) {
     return (
@@ -76,24 +100,23 @@ export default function DashboardPage() {
               Bienvenido a tu práctica de japonés JLPT N5
             </p>
           </div>
-          <AnimatedButton variant="outline" onClick={logout}>
-            Cerrar Sesión
-          </AnimatedButton>
+          <ProfileButton />
         </motion.div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 md:gap-4">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
+            className="h-full"
           >
-            <Card className="border-2 hover:shadow-lg transition-shadow">
+            <Card className="border-2 hover:shadow-lg transition-shadow h-full flex flex-col">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Nivel</CardTitle>
                 <Star className="h-5 w-5 text-kawaii-pink" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1">
                 <div className="text-3xl font-bold">{level}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {formatPoints(user.exp)} EXP
@@ -106,13 +129,14 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
+            className="h-full"
           >
-            <Card className="border-2 hover:shadow-lg transition-shadow">
+            <Card className="border-2 hover:shadow-lg transition-shadow h-full flex flex-col">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Racha</CardTitle>
                 <Flame className="h-5 w-5 text-kawaii-rose" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1">
                 <div className="text-3xl font-bold">{user.streak}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   días consecutivos
@@ -125,13 +149,14 @@ export default function DashboardPage() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
+            className="h-full"
           >
-            <Card className="border-2 hover:shadow-lg transition-shadow">
+            <Card className="border-2 hover:shadow-lg transition-shadow h-full flex flex-col">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Puntos</CardTitle>
                 <Trophy className="h-5 w-5 text-kawaii-blue" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1">
                 <div className="text-3xl font-bold">{formatPoints(user.exp)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   puntos totales

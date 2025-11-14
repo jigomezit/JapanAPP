@@ -73,10 +73,10 @@ export function ExerciseRenderer({ onComplete }: ExerciseRendererProps) {
     }
 
     // Auto-advance after showing result
-    setTimeout(() => {
+    setTimeout(async () => {
       setShowResult(false);
       setShowParticles(false);
-      nextQuestion();
+      await nextQuestion();
     }, 2000);
   };
 
