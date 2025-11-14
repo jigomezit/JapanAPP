@@ -56,8 +56,8 @@ export async function savePartida(partida: {
   puntos: number;
   tipo: string;
 }): Promise<{ error: Error | null }> {
-  const { error } = await supabase
-    .from("partidas")
+  const { error } = await (supabase
+    .from("partidas") as any)
     .insert({
       usuario_id: partida.usuario_id,
       ejercicio_id: partida.ejercicio_id,
@@ -66,7 +66,7 @@ export async function savePartida(partida: {
       puntos: partida.puntos,
       tipo: partida.tipo,
       fecha: new Date().toISOString(),
-    } as any);
+    });
 
   if (error) {
     console.error("Error saving partida:", error);

@@ -133,8 +133,8 @@ export const useSession = create<SessionState>((set, get) => ({
     if (!user) return;
 
     try {
-      const { error } = await supabase
-        .from("usuarios")
+      const { error } = await (supabase
+        .from("usuarios") as any)
         .update(updates)
         .eq("id", user.id);
 
