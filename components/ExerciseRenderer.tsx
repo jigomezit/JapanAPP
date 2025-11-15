@@ -71,13 +71,12 @@ export function ExerciseRenderer({ onComplete }: ExerciseRendererProps) {
       setShake(true);
       setTimeout(() => setShake(false), 500);
     }
+  };
 
-    // Auto-advance after showing result
-    setTimeout(async () => {
-      setShowResult(false);
-      setShowParticles(false);
-      await nextQuestion();
-    }, 2000);
+  const handleContinue = async () => {
+    setShowResult(false);
+    setShowParticles(false);
+    await nextQuestion();
   };
 
   if (!currentExercise) {
@@ -191,7 +190,7 @@ export function ExerciseRenderer({ onComplete }: ExerciseRendererProps) {
             ? "¡Correcto! 🎉"
             : `Incorrecto. La respuesta correcta es: ${currentExercise.respuesta_correcta}`
         }
-        onClose={() => setShowResult(false)}
+        onContinue={handleContinue}
       />
     </div>
   );

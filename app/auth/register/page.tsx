@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSession } from "@/store/useSession";
 import { AnimatedButton } from "@/components/AnimatedButton";
+import { SuccessCelebration } from "@/components/SuccessCelebration";
 import Link from "next/link";
 
 export default function RegisterPage() {
@@ -19,31 +20,77 @@ export default function RegisterPage() {
   const [nombre, setNombre] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [showCelebration, setShowCelebration] = React.useState(false);
+  const [isSuccess, setIsSuccess] = React.useState(false);
+  const [requiresEmailConfirmation, setRequiresEmailConfirmation] = React.useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
+    setShowCelebration(false);
+    setIsSuccess(false);
+    setRequiresEmailConfirmation(false);
 
-    const { error } = await register(email, password, nombre);
+    const result = await register(email, password, nombre);
 
-    if (error) {
-      setError(error.message);
+    if (result.error) {
+      setError(result.error.message);
       setIsLoading(false);
     } else {
-      router.push("/dashboard");
+      // Guardar si requiere confirmación de email
+      setRequiresEmailConfirmation(result.requiresEmailConfirmation || false);
+      // Mostrar celebración
+      setIsSuccess(true);
+      setShowCelebration(true);
+      setIsLoading(false);
     }
+  };
+
+  const handleCelebrationComplete = () => {
+    setShowCelebration(false);
+    // Redirigir según si requiere confirmación de email o no
+    setTimeout(() => {
+      if (requiresEmailConfirmation) {
+        // Si requiere confirmación, redirigir a login con mensaje
+        router.push("/auth/login?registered=true");
+      } else {
+        // Si no requiere confirmación, redirigir a dashboard
+        router.push("/dashboard");
+      }
+    }, 300);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-kawaii-pink/20 via-kawaii-lavender/20 to-kawaii-blue/20 p-4">
+      <SuccessCelebration
+        show={showCelebration}
+        onComplete={handleCelebrationComplete}
+        message="¡Cuenta creada exitosamente!"
+      />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        animate={{
+          opacity: 1,
+          y: 0,
+          scale: isSuccess ? [1, 1.05, 1] : 1,
+        }}
+        transition={{
+          duration: 0.3,
+          scale: {
+            duration: 0.5,
+            times: [0, 0.5, 1],
+          },
+        }}
         className="w-full max-w-md"
       >
-        <Card className="shadow-xl border-2">
+        <motion.div
+          animate={{
+            filter: isSuccess ? "brightness(1.1)" : "brightness(1)",
+          }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="shadow-xl border-2">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-kawaii-pink to-kawaii-rose bg-clip-text text-transparent">
               Crear Cuenta
@@ -121,6 +168,7 @@ export default function RegisterPage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       </motion.div>
     </div>
   );

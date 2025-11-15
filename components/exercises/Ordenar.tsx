@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ExerciseCard } from "@/components/ExerciseCard";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import type { Exercise } from "@/lib/types";
 import { shuffleArray } from "@/lib/utils";
 
@@ -25,23 +25,48 @@ export function Ordenar({
   const [orderedWords, setOrderedWords] = React.useState<string[]>(() =>
     shuffleArray([...palabras])
   );
+  const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
 
-  const moveWord = (index: number, direction: "up" | "down") => {
+  const handleDragStart = (e: React.DragEvent, index: number) => {
     if (disabled) return;
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/html", index.toString());
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (disabled || draggedIndex === null) return;
 
     const newOrder = [...orderedWords];
-    if (direction === "up" && index > 0) {
-      [newOrder[index - 1], newOrder[index]] = [
-        newOrder[index],
-        newOrder[index - 1],
-      ];
-    } else if (direction === "down" && index < newOrder.length - 1) {
-      [newOrder[index], newOrder[index + 1]] = [
-        newOrder[index + 1],
-        newOrder[index],
-      ];
-    }
+    const draggedItem = newOrder[draggedIndex];
+
+    // Remover el elemento arrastrado
+    newOrder.splice(draggedIndex, 1);
+    // Insertar en la nueva posición
+    newOrder.splice(dropIndex, 0, draggedItem);
+
     setOrderedWords(newOrder);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const handleSubmit = () => {
@@ -59,45 +84,92 @@ export function Ordenar({
           transition={{ duration: 0.3 }}
         >
           <p className="text-muted-foreground mb-4">
-            Ordena las palabras para formar una frase correcta
+            Arrastra las palabras para ordenarlas correctamente
           </p>
 
-          <div className="space-y-2">
-            <AnimatePresence>
-              {orderedWords.map((word, index) => (
+          <div className="space-y-2 relative" style={{ isolation: "isolate" }}>
+            {orderedWords.map((word, index) => {
+              const isDragging = draggedIndex === index;
+              const isDragOver = dragOverIndex === index;
+              
+              return (
                 <motion.div
-                  key={`${word}-${index}`}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="flex items-center gap-2"
-                >
-                  <div className="flex flex-col gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => moveWord(index, "up")}
-                      disabled={disabled || index === 0}
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => moveWord(index, "down")}
-                      disabled={disabled || index === orderedWords.length - 1}
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex-1 px-4 py-3 bg-secondary rounded-xl border-2 border-transparent hover:border-kawaii-pink transition-all">
-                    {word}
-                  </div>
+                  key={word}
+                  layout
+                  initial={false}
+                  animate={{
+                    opacity: isDragging ? 0.7 : 1,
+                    scale: isDragging ? 1.05 : isDragOver ? 1.03 : 1,
+                    y: isDragging ? -5 : 0,
+                    rotateZ: isDragging ? 2 : 0,
+                    boxShadow: isDragging 
+                      ? "0 10px 25px -5px rgba(255, 182, 193, 0.4), 0 8px 10px -6px rgba(255, 182, 193, 0.3)" 
+                      : isDragOver 
+                      ? "0 4px 12px -2px rgba(255, 182, 193, 0.3)" 
+                      : "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+                  }}
+                  transition={{
+                    layout: { 
+                      duration: 0.4, 
+                      ease: [0.4, 0, 0.2, 1],
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 30
+                    },
+                    opacity: { duration: 0.2 },
+                    scale: { 
+                      duration: 0.3,
+                      type: "spring",
+                      stiffness: 400,
+                      damping: 25
+                    },
+                    y: { 
+                      duration: 0.2,
+                      ease: "easeOut"
+                    },
+                    rotateZ: { 
+                      duration: 0.2,
+                      ease: "easeOut"
+                    },
+                    boxShadow: { 
+                      duration: 0.3,
+                      ease: "easeOut"
+                    },
+                  }}
+                  whileHover={!disabled && !isDragging ? {
+                    scale: 1.02,
+                    y: -2,
+                    transition: { duration: 0.2 }
+                  } : {}}
+                  draggable={!disabled}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, index)}
+                  className={`
+                    flex items-center gap-3 cursor-move
+                    px-4 py-3 bg-secondary rounded-xl border-2
+                    ${isDragging ? "border-kawaii-pink" : ""}
+                    ${isDragOver ? "border-kawaii-pink bg-kawaii-pink/10" : "border-transparent"}
+                    ${disabled ? "cursor-not-allowed opacity-60" : ""}
+                  `}
+                  style={{
+                    position: "relative",
+                    zIndex: isDragging ? 1000 : isDragOver ? 10 : index + 1,
+                  }}
+              >
+                  <GripVertical 
+                    className={`h-5 w-5 flex-shrink-0 transition-colors ${
+                      isDragging 
+                        ? "text-kawaii-pink" 
+                        : "text-muted-foreground"
+                    }`}
+                  />
+                  <span className="flex-1 text-lg font-medium">{word}</span>
                 </motion.div>
-              ))}
-            </AnimatePresence>
+              );
+            })}
           </div>
 
           <Button

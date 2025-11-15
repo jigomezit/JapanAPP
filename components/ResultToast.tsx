@@ -4,54 +4,58 @@ import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface ResultToastProps {
   show: boolean;
   correct: boolean;
   message?: string;
-  onClose?: () => void;
+  onContinue?: () => void;
 }
 
 export function ResultToast({
   show,
   correct,
   message,
-  onClose,
+  onContinue,
 }: ResultToastProps) {
-  React.useEffect(() => {
-    if (show && onClose) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [show, onClose]);
-
   return (
     <AnimatePresence>
       {show && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 md:top-20 md:translate-y-0 pointer-events-none">
+        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 pointer-events-none">
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
             className={cn(
-              "flex items-center justify-center gap-2 px-6 py-3 rounded-xl shadow-lg",
-              "w-auto max-w-[90vw] text-center pointer-events-auto",
+              "flex flex-col items-center justify-center gap-4 px-6 py-4 rounded-t-2xl shadow-2xl",
+              "w-full max-w-2xl mx-auto text-center pointer-events-auto",
               correct
                 ? "bg-green-50 border-2 border-green-200 text-green-900"
                 : "bg-red-50 border-2 border-red-200 text-red-900"
             )}
           >
-            {correct ? (
-              <CheckCircle2 className="w-6 h-6 text-green-600" />
-            ) : (
-              <XCircle className="w-6 h-6 text-red-600" />
+            <div className="flex items-center gap-3">
+              {correct ? (
+                <CheckCircle2 className="w-8 h-8 text-green-600" />
+              ) : (
+                <XCircle className="w-8 h-8 text-red-600" />
+              )}
+              <span className="font-semibold text-lg">
+                {message || (correct ? "¡Correcto!" : "Incorrecto")}
+              </span>
+            </div>
+            {onContinue && (
+              <Button
+                onClick={onContinue}
+                variant={correct ? "default" : "destructive"}
+                size="lg"
+                className="min-w-[120px]"
+              >
+                Continuar
+              </Button>
             )}
-            <span className="font-semibold">
-              {message || (correct ? "¡Correcto!" : "Incorrecto")}
-            </span>
           </motion.div>
         </div>
       )}

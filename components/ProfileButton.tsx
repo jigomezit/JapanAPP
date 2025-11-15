@@ -4,6 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { User, Camera, Loader2, LogOut } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,6 +27,7 @@ import { uploadAvatar, updateUserProfile } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 export function ProfileButton() {
+  const router = useRouter();
   const { user, refreshUser, logout } = useSession();
   const { toast } = useToast();
   const [open, setOpen] = React.useState(false);
@@ -121,6 +123,25 @@ export function ProfileButton() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Esperar un momento para asegurar que el estado se actualice
+      await new Promise(resolve => setTimeout(resolve, 100));
+      router.push("/auth/login");
+      router.refresh(); // Forzar actualización de la página
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo cerrar sesión. Intenta de nuevo.",
+        variant: "destructive",
+      });
+      // Aún así, intentar navegar a login
+      router.push("/auth/login");
+    }
+  };
+
   if (!user) return null;
 
   const getInitials = () => {
@@ -167,7 +188,7 @@ export function ProfileButton() {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={logout}
+            onClick={handleLogout}
             className="cursor-pointer text-destructive focus:text-destructive"
           >
             <LogOut className="mr-2 h-4 w-4" />

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Progress } from "@/components/ui/progress";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { cn } from "@/lib/utils";
 
 interface ProgressBarProps {
@@ -9,6 +10,7 @@ interface ProgressBarProps {
   max?: number;
   className?: string;
   showLabel?: boolean;
+  isStreakActive?: boolean;
 }
 
 export function ProgressBar({
@@ -16,6 +18,7 @@ export function ProgressBar({
   max = 100,
   className,
   showLabel = false,
+  isStreakActive = false,
 }: ProgressBarProps) {
   const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
 
@@ -24,12 +27,15 @@ export function ProgressBar({
       {showLabel && (
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>Progreso</span>
-          <span>{Math.round(percentage)}%</span>
+          <span>
+            <AnimatedNumber value={percentage} decimals={0} suffix="%" />
+          </span>
         </div>
       )}
       <Progress 
         value={percentage} 
-        className="h-3 w-full" 
+        className="h-3 w-full"
+        isStreakActive={isStreakActive}
       />
     </div>
   );

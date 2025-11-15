@@ -7,6 +7,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExerciseRenderer } from "@/components/ExerciseRenderer";
 import { ProgressBar } from "@/components/ProgressBar";
+import { LightningEffect } from "@/components/LightningEffect";
+import { GoldenStreakOverlay } from "@/components/GoldenStreakOverlay";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { usePractice } from "@/store/usePractice";
 import { useSession } from "@/store/useSession";
 import { formatTime, formatPoints, calculateAccuracy } from "@/lib/utils";
@@ -26,7 +29,14 @@ export default function PracticePage() {
     loadExercises,
     isFinished,
     reset,
+    consecutiveCorrect,
+    resetConsecutiveCorrect,
+    getCurrentTime,
   } = usePractice();
+
+  const [showLightning, setShowLightning] = React.useState(false);
+  const [showGoldenOverlay, setShowGoldenOverlay] = React.useState(false);
+  const [currentTime, setCurrentTime] = React.useState(0);
 
   const [exerciseTypes, setExerciseTypes] = React.useState<ExerciseType[]>([
     "kanji_lectura",
@@ -63,6 +73,42 @@ export default function PracticePage() {
     }
   }, [isFinished, router]);
 
+  // Show lightning and golden overlay when reaching 5 consecutive correct answers
+  React.useEffect(() => {
+    if (consecutiveCorrect === 5) {
+      setShowLightning(true);
+      setShowGoldenOverlay(true);
+    }
+  }, [consecutiveCorrect]);
+
+  // Update current time every second
+  React.useEffect(() => {
+    if (isFinished || loading) {
+      setCurrentTime(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const exerciseTime = getCurrentTime();
+      setCurrentTime(exerciseTime);
+    }, 1000);
+
+    // Initial update
+    const exerciseTime = getCurrentTime();
+    setCurrentTime(exerciseTime);
+
+    return () => clearInterval(interval);
+  }, [getCurrentTime, isFinished, loading, currentIndex]);
+
+  const handleLightningComplete = () => {
+    setShowLightning(false);
+  };
+
+  const handleGoldenOverlayContinue = () => {
+    setShowGoldenOverlay(false);
+    resetConsecutiveCorrect();
+  };
+
   const handleComplete = () => {
     router.push("/resultado");
   };
@@ -96,7 +142,8 @@ export default function PracticePage() {
               <div>
                 <p className="text-sm text-muted-foreground">Progreso</p>
                 <p className="text-2xl font-bold">
-                  {currentIndex + 1}/{exercises.length}
+                  <AnimatedNumber value={currentIndex + 1} />
+                  /{exercises.length}
                 </p>
               </div>
               <Target className="h-8 w-8 text-kawaii-pink" />
@@ -107,7 +154,9 @@ export default function PracticePage() {
             <div className="flex items-center justify-between flex-1">
               <div>
                 <p className="text-sm text-muted-foreground">Puntos</p>
-                <p className="text-2xl font-bold">{formatPoints(score)}</p>
+                <p className="text-2xl font-bold">
+                  <AnimatedNumber value={score} formatLocale="es-ES" />
+                </p>
               </div>
               <Trophy className="h-8 w-8 text-kawaii-rose" />
             </div>
@@ -117,9 +166,13 @@ export default function PracticePage() {
             <div className="flex items-center justify-between flex-1">
               <div>
                 <p className="text-sm text-muted-foreground">Precisión</p>
-                <p className="text-2xl font-bold">{accuracy}%</p>
+                <p className="text-2xl font-bold">
+                  <AnimatedNumber value={accuracy} suffix="%" />
+                </p>
               </div>
-              <Badge variant="kawaii">{correctCount}</Badge>
+              <Badge variant="kawaii">
+                <AnimatedNumber value={correctCount} />
+              </Badge>
             </div>
           </Card>
 
@@ -127,7 +180,7 @@ export default function PracticePage() {
             <div className="flex items-center justify-between flex-1">
               <div>
                 <p className="text-sm text-muted-foreground">Tiempo</p>
-                <p className="text-2xl font-bold">{formatTime(totalTime)}</p>
+                <p className="text-2xl font-bold">{formatTime(totalTime + currentTime)}</p>
               </div>
               <Clock className="h-8 w-8 text-kawaii-blue" />
             </div>
@@ -140,7 +193,12 @@ export default function PracticePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <ProgressBar value={progress} max={100} showLabel />
+          <ProgressBar 
+            value={progress} 
+            max={100} 
+            showLabel 
+            isStreakActive={consecutiveCorrect >= 5}
+          />
         </motion.div>
 
         {/* Exercise Renderer */}
@@ -151,6 +209,12 @@ export default function PracticePage() {
         >
           <ExerciseRenderer onComplete={handleComplete} />
         </motion.div>
+
+        {/* Lightning Effect */}
+        <LightningEffect show={showLightning} onComplete={handleLightningComplete} />
+
+        {/* Golden Streak Overlay */}
+        <GoldenStreakOverlay show={showGoldenOverlay} onContinue={handleGoldenOverlayContinue} />
       </div>
     </div>
   );

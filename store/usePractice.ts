@@ -14,6 +14,7 @@ interface PracticeState {
   totalTime: number;
   startTime: number | null;
   isFinished: boolean;
+  consecutiveCorrect: number;
   results: Array<{
     exerciseId: string;
     correct: boolean;
@@ -30,7 +31,9 @@ interface PracticeState {
   finishPractice: () => Promise<void>;
   reset: () => void;
   startTimer: () => void;
+  stopTimer: () => void;
   getCurrentTime: () => number;
+  resetConsecutiveCorrect: () => void;
 }
 
 export const usePractice = create<PracticeState>((set, get) => ({
@@ -41,13 +44,14 @@ export const usePractice = create<PracticeState>((set, get) => ({
   totalTime: 0,
   startTime: null,
   isFinished: false,
+  consecutiveCorrect: 0,
   results: [],
   currentExercise: null,
   loading: false,
   error: null,
 
   loadExercises: async (types: ExerciseType[], limit: number = 10) => {
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, currentExercise: null });
     try {
       const { data, error } = await getExercises(types, limit);
       if (error) {
@@ -65,6 +69,7 @@ export const usePractice = create<PracticeState>((set, get) => ({
         totalTime: 0,
         startTime: Date.now(),
         isFinished: false,
+        consecutiveCorrect: 0,
         results: [],
         loading: false,
       });
@@ -80,14 +85,24 @@ export const usePractice = create<PracticeState>((set, get) => ({
     const { currentExercise, startTime } = get();
     if (!currentExercise) return false;
 
+    // Stop timer before calculating time
+    const timeSeconds = startTime
+      ? Math.floor((Date.now() - startTime) / 1000)
+      : 0;
+    
+    // Pause timer by setting startTime to null
+    set({ startTime: null });
+
     // Normalize answers for comparison (trim and normalize spaces)
     const normalizedAnswer = answer.trim().replace(/\s+/g, " ");
     const normalizedCorrect = currentExercise.respuesta_correcta
       .trim()
       .replace(/\s+/g, " ");
     const correct = normalizedAnswer === normalizedCorrect;
-    const timeSeconds = startTime
-      ? Math.floor((Date.now() - startTime) / 1000)
+
+    // Update consecutive correct counter
+    const newConsecutiveCorrect = correct 
+      ? get().consecutiveCorrect + 1 
       : 0;
 
     const { user } = useSession.getState();
@@ -112,6 +127,7 @@ export const usePractice = create<PracticeState>((set, get) => ({
       score: get().score + points,
       correctCount: correct ? get().correctCount + 1 : get().correctCount,
       totalTime: get().totalTime + timeSeconds,
+      consecutiveCorrect: newConsecutiveCorrect,
     });
 
     return correct;
@@ -210,6 +226,7 @@ export const usePractice = create<PracticeState>((set, get) => ({
       totalTime: 0,
       startTime: null,
       isFinished: false,
+      consecutiveCorrect: 0,
       results: [],
       currentExercise: null,
       loading: false,
@@ -221,10 +238,25 @@ export const usePractice = create<PracticeState>((set, get) => ({
     set({ startTime: Date.now() });
   },
 
+  stopTimer: () => {
+    const { startTime } = get();
+    if (startTime) {
+      const timeSeconds = Math.floor((Date.now() - startTime) / 1000);
+      set({ 
+        startTime: null,
+        totalTime: get().totalTime + timeSeconds,
+      });
+    }
+  },
+
   getCurrentTime: (): number => {
     const { startTime } = get();
     if (!startTime) return 0;
     return Math.floor((Date.now() - startTime) / 1000);
+  },
+
+  resetConsecutiveCorrect: () => {
+    set({ consecutiveCorrect: 0 });
   },
 }));
 
