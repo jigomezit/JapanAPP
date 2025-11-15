@@ -28,19 +28,19 @@ export function Ordenar({
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
     if (disabled) return;
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/html", index.toString());
   };
 
-  const handleDragEnd = (e: React.DragEvent) => {
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
     setDraggedIndex(null);
     setDragOverIndex(null);
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     if (draggedIndex !== null && draggedIndex !== index) {
@@ -52,7 +52,7 @@ export function Ordenar({
     setDragOverIndex(null);
   };
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, dropIndex: number) => {
     e.preventDefault();
     if (disabled || draggedIndex === null) return;
 
@@ -142,11 +142,11 @@ export function Ordenar({
                     transition: { duration: 0.2 }
                   } : {}}
                   draggable={!disabled}
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragEnd={handleDragEnd}
-                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                  onDragEnd={(e) => handleDragEnd(e as unknown as React.DragEvent<HTMLDivElement>)}
+                  onDragOver={(e) => handleDragOver(e as unknown as React.DragEvent<HTMLDivElement>, index)}
                   onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, index)}
+                  onDrop={(e) => handleDrop(e as unknown as React.DragEvent<HTMLDivElement>, index)}
                   className={`
                     flex items-center gap-3 cursor-move
                     px-4 py-3 bg-secondary rounded-xl border-2
